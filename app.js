@@ -1,0 +1,19 @@
+const $=id=>document.getElementById(id),KEY='cgc-data-v2';
+const initial={prompts:[{id:crypto.randomUUID(),title:'Resumir',body:'Resuma o conteúdo em tópicos, preservando informações importantes:',folder:'Escrita',tags:['resumo']},{id:crypto.randomUUID(),title:'Traduzir para japonês',body:'Traduza para japonês natural e explique nuances importantes:',folder:'Idiomas',tags:['japonês','tradução']}],memory:'',dark:false};
+let data;
+function load(){try{data=JSON.parse(localStorage.getItem(KEY))||structuredClone(initial)}catch{data=structuredClone(initial)}}
+function save(){localStorage.setItem(KEY,JSON.stringify(data))}
+function el(tag,txt,cls){let x=document.createElement(tag);x.textContent=txt;if(cls)x.className=cls;return x}
+function render(){let list=$('promptList');list.replaceChildren();let q=$('search').value.toLowerCase();data.prompts.filter(p=>[p.title,p.body,p.folder,(p.tags||[]).join(' ')].join(' ').toLowerCase().includes(q)).forEach(p=>{let card=el('article','','prompt');card.append(el('strong',p.title),el('div',`${p.folder||'Sem pasta'} · ${(p.tags||[]).join(', ')}`,'meta'),el('p',p.body));let copy=el('button','Copiar prompt');copy.onclick=async()=>{try{await navigator.clipboard.writeText(p.body);copy.textContent='Copiado'}catch{alert('Cópia indisponível; selecione e copie o texto manualmente.')}};let del=el('button','Excluir');del.onclick=()=>{data.prompts=data.prompts.filter(x=>x.id!==p.id);save();render()};card.append(copy,del);list.append(card)});$('memoryText').value=data.memory;$('dark').checked=data.dark;document.body.classList.toggle('dark',data.dark)}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button,.page').forEach(x=>x.classList.remove('active'));b.classList.add('active');$(b.dataset.page).classList.add('active')});
+$('search').oninput=render;$('add').onclick=()=>{let title=$('title').value.trim(),body=$('body').value.trim();if(!title||!body)return alert('Preencha nome e texto.');data.prompts.unshift({id:crypto.randomUUID(),title,body,folder:$('folder').value.trim(),tags:$('tags').value.split(',').map(x=>x.trim()).filter(Boolean)});save();['title','body','folder','tags'].forEach(x=>$(x).value='');render()};
+$('saveMemory').onclick=()=>{data.memory=$('memoryText').value;save();alert('Memória salva neste dispositivo.')};
+$('dark').onchange=()=>{data.dark=$('dark').checked;save();render()};
+$('export').onclick=()=>{let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='chatgpt-companion-backup.json';a.click();URL.revokeObjectURL(a.href)};
+$('import').onchange=async e=>{try{let obj=JSON.parse(await e.target.files[0].text());if(!Array.isArray(obj.prompts))throw Error();data={...initial,...obj};save();render();alert('Backup importado.')}catch{alert('Arquivo JSON inválido.')}};
+$('clear').onclick=()=>{if(confirm('Apagar todos os dados locais?')){data=structuredClone(initial);save();render()}};
+let currentUrl=null;
+$('imageFile').onchange=()=>{const f=$('imageFile').files[0],p=$('preview');p.replaceChildren();$('reviewed').checked=false;if(currentUrl)URL.revokeObjectURL(currentUrl);currentUrl=null;if(!f)return;if(!f.type.startsWith('image/'))return alert('Escolha um arquivo de imagem.');currentUrl=URL.createObjectURL(f);let im=document.createElement('img');im.src=currentUrl;im.alt='Prévia da imagem';p.append(im,el('p',`${f.name} · ${(f.size/1024/1024).toFixed(2)} MB`));};
+$('clearPreview').onclick=()=>{$('imageFile').value='';$('preview').replaceChildren();$('reviewed').checked=false;if(currentUrl)URL.revokeObjectURL(currentUrl);currentUrl=null};
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+load();render();

@@ -1,0 +1,9 @@
+{
+  "name": "ChatGPT Companion",
+  "short_name": "Companion",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f7f7fa",
+  "theme_color": "#6b5ce7",
+  "description": "Prompts, organização e revisão local de imagens"
+}
